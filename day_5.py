@@ -545,35 +545,34 @@ def solve(lines_str):
     points = defaultdict(int)
 
     for line in lines:
+        start = line.start.x
+        end = line.end.x
+        y = line.start.y
         if line.start.x == line.end.x:
-            start = min(line.start.y, line.end.y)
-            end = max(line.start.y, line.end.y)
-            for y in range(start, end + 1):
-                points[(line.start.x, y)] += 1
-        elif line.start.y == line.end.y:
-            start = min(line.start.x, line.end.x)
-            end = max(line.start.x, line.end.x)
-            for x in range(start, end + 1):
-                points[(x, line.start.y)] += 1
-        else:
-            start = line.start.x
-            end = line.end.x
-            y = line.start.y
-            if line.start.x < line.end.x:
-                if line.start.y < line.end.y:
-                    dir_ = (1, 1)
-                else:
-                    dir_ = (1, -1)
+            if line.start.y < line.end.y:
+                dir_ = (0, 1)
             else:
-                if line.start.y < line.end.y:
-                    dir_ = (-1, 1)
-                else:
-                    dir_ = (-1, -1)
+                dir_ = (0, -1)
+        elif line.start.x < line.end.x:
+            if line.start.y == line.end.y:
+                dir_ = (1, 0)
+            elif line.start.y < line.end.y:
+                dir_ = (1, 1)
+            else:
+                dir_ = (1, -1)
+        else:
+            if line.start.y == line.end.y:
+                dir_ = (-1, 0)
+            elif line.start.y < line.end.y:
+                dir_ = (-1, 1)
+            else:
+                dir_ = (-1, -1)
 
-            while start != end + dir_[0]:
-                points[(start, y)] += 1
-                start += dir_[0]
-                y += dir_[1]
+        while (start, y) != (line.end.x, line.end.y):
+            points[(start, y)] += 1
+            start += dir_[0]
+            y += dir_[1]
+        points[(line.end.x, line.end.y)] += 1
 
     n = 0
     for point, count in points.items():

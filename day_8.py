@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 TEST_INPUT = """be cfbegad cbdgef fgaecd cgeb fdcge agebfd fecdb fabcd edb | fdgacbe cefdb cefbgd gcbe
 edbfga begcd cbg gc gcadebf fbgde acbgfd abcde gfcbed gfec | fcgedb cgb dgebacf gc
 fgaebd cg bdaec gdafb agbcfd gdcbef bgcad gfac gcb cdgabef | cg cg fdcagb cbg
@@ -219,6 +221,38 @@ SEGMENTS_FOR_NUMBER = {
 }
 
 
+"""
+a | 8
+b | 6
+c | 8
+e | 4
+f | 9
+d | 7
+g | 7
+"""
+
+IDENTIFIABLE = {
+    4: 'e',
+    9: 'f',
+    6: 'b',
+    8: 'c',
+}
+
+
+ENCODINGS = {
+    'cf': 1,
+    'acf': 7,
+    'bcdf': 4,
+    'acdeg': 2,
+    'acdfg': 3,
+    'abdfg': 5,
+    'abcefg': 0,
+    'abdefg': 6,
+    'abcdfg': 9,
+    'abcdefg': 8,
+}
+
+
 def solve(notes_str):
     found = 0
 
@@ -228,13 +262,46 @@ def solve(notes_str):
         signal_patterns = signal_patterns_str.split(" ")
         output_value = output_value_str.split(" ")
 
+        [one] = [s for s in signal_patterns if len(s) == SEGMENTS_FOR_NUMBER[1]]
+        [four] = [s for s in signal_patterns if len(s) == SEGMENTS_FOR_NUMBER[4]]
+        [seven] = [s for s in signal_patterns if len(s) == SEGMENTS_FOR_NUMBER[7]]
+        [eight] = [s for s in signal_patterns if len(s) == SEGMENTS_FOR_NUMBER[8]]
+
+        freqs = defaultdict(int)
+
+        for signal in signal_patterns:
+            for c in signal:
+                freqs[c] += 1
+
+        [a] = [char for char in seven if char not in one]
+
+        real_to_scrambled = {IDENTIFIABLE[v]: k for k, v in freqs.items() if k != a and v != 7}
+        real_to_scrambled['a'] = a
+
+        [d] = [char for char in four if char not in (real_to_scrambled['b'], real_to_scrambled['c'], real_to_scrambled['f'])]
+        real_to_scrambled['d'] = d
+
+        missing = None
+        assert 'g' not in real_to_scrambled
+        [g] = [char for char in 'abcdefg' if char not in real_to_scrambled.values()]
+        real_to_scrambled['g'] = g
+
+        assert len(real_to_scrambled) == 7
+
+        scrambled_to_real = {v: k for k, v in real_to_scrambled.items()}
+
+        output_num = 0
+
         for output in output_value:
-            if len(output) in SEGMENTS_FOR_NUMBER.values():
-                found += 1
+            unscrambled = ''.join(sorted([scrambled_to_real[c] for c in output]))
+            number = ENCODINGS[unscrambled]
+            output_num = (output_num * 10) + number
+
+        found += output_num
 
     return found
 
 
 if __name__ == "__main__":
-    assert solve(TEST_INPUT) == 26
+    assert solve(TEST_INPUT) == 61229
     print(solve(PUZZLE_INPUT))

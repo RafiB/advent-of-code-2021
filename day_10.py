@@ -106,42 +106,60 @@ PUZZLE_INPUT = """<[{([[<{{(<{[({}<>){{}{}}][<<>{}>[<>{}]]}(<<<>()}{[]()}>([{}()
 
 
 POINTS = {
-    ')': 3,
-    ']': 57,
-    '}': 1197,
-    '>': 25137,
+    ')': 1,
+    ']': 2,
+    '}': 3,
+    '>': 4,
 }
 
 
 def solve(navigation_subsystem_str):
-    stack = []
-
-    score = 0
+    scores = []
 
     for line in navigation_subsystem_str.split("\n"):
+        stack = []
+
+        corrupt = False
         for char in line:
-            old_score = score
             if char in '([{<':
                 stack.append(char)
             else:
                 opened = stack[-1]
                 if char == ']' and opened != '[':
-                    score += POINTS[char]
+                    corrupt = True
                 elif char == '}' and opened != '{':
-                    score += POINTS[char]
+                    corrupt = True
                 elif char == ')' and opened != '(':
-                    score += POINTS[char]
+                    corrupt = True
                 elif char == '>' and opened != '<':
-                    score += POINTS[char]
+                    corrupt = True
                 else:
                     stack.pop()
 
-            if score > old_score:
+            if corrupt:
                 break
 
-    return score
+        if corrupt:
+            continue
+
+        curr_score = 0
+        while stack:
+            to_close = stack.pop()
+            if to_close == '(':
+                closing = ')'
+            elif to_close == '[':
+                closing = ']'
+            elif to_close == '{':
+                closing = '}'
+            elif to_close == '<':
+                closing = '>'
+            curr_score = (curr_score * 5) + POINTS[closing]
+
+        scores.append(curr_score)
+
+    return sorted(scores)[len(scores) // 2]
 
 
 if __name__ == "__main__":
-    assert solve(TEST_INPUT) == 26397
+    assert solve(TEST_INPUT) == 288957
     print(solve(PUZZLE_INPUT))

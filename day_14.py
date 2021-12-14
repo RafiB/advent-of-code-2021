@@ -1,5 +1,4 @@
 from collections import defaultdict
-import threading
 
 
 TEST_INPUT = """NNCB
@@ -130,82 +129,62 @@ def solve(template_and_rules_str):
     template = None
     rules = {}
 
+    pair_counts = defaultdict(int)
+
     for line in template_and_rules_str.split("\n"):
         if template is None:
-            template = list(line)
+            template = line
         elif not line:
             continue
         else:
             pair, insertion = line.split(" -> ")
             rules[pair] = insertion
 
-    def chunk(template):
-        every = len(template) // 3
+    for i, c in enumerate(template[:-1]):
+        pair_counts[c+template[i+1]] += 1
 
-        max_size = min(every, 1000000)
+    for step in range(40):
+        new_pairs = defaultdict(int)
+        for pair, count in pair_counts.items():
+            """
+            given a pair xy that maps to insertion z,
+            the inserted string is xzy, which means we have
+            2 new pairs: xz, zy
+            xz and zy will both be added to the next version of the string
+            for every time xy exists in the original string,
+            which is why we add `count` for each of the new pairs
+            """
+            insertion = rules[pair]
+            new_pairs[pair[0] + insertion] += count
+            new_pairs[insertion + pair[1]] += count
 
-        chunks = []
+        pair_counts = new_pairs
 
-        start = 0
-        end = max_size
-        while start <= len(template):
-            chunks.append(template[start:end + 1])
-            start += max_size
-            end += max_size
+    char_freq = defaultdict(int)
 
-        return chunks
+    for pair, count in pair_counts.items():
+        a, b = pair[0], pair[1]
+        char_freq[a] += count
+        char_freq[b] += count
 
+    char_freq[template[0]] -= 1
+    char_freq[template[-1]] -= 1
 
-    def run_insertions(pos, template, answers):
-        insertions = []
-        for c in range(len(template)-1):
-            insertions.append(rules[template[c]+template[c+1]])
+    for char in char_freq:
+        assert char_freq[char] % 2 == 0
+        char_freq[char] //= 2
 
-        new_template = template + insertions
-        i = 0
-        for c in range(len(template)):
-            new_template[i] = template[c]
-            i += 1
-            if c < len(template) - 1:
-                new_template[i] = insertions[c]
-                i += 1
-        answers[pos] = new_template
+    char_freq[template[0]] += 1
+    char_freq[template[-1]] += 1
 
-    for i in range(40):
-        print("step", i, len(template))
-        threads = []
-        chunks = chunk(template)
-        answers = [None for _ in range(len(chunks))]
-        for i, c in enumerate(chunks):
-            t = threading.Thread(target=run_insertions, args=(i, c, answers))
-            t.start()
-            threads.append(t)
-        for t in threads:
-            t.join()
-        template = answers[0]
-        for a in answers[1:]:
-            template += a[1:]
+    min_count = float('inf')
+    max_count = float('-inf')
 
-    most_common_count = float('-inf')
-    least_common_count = float('inf')
-    most_common = None
-    least_common = None
+    for count in char_freq.values():
+        min_count = min(min_count, count)
+        max_count = max(max_count, count)
 
-    counts = defaultdict(int)
-    print("counting")
-    for c in template:
-        counts[c] += 1
-
-    print("minning")
-    for c, count in counts.items():
-        if count > most_common_count:
-            most_common_count = count
-            most_common = c
-        if count < least_common_count:
-            least_common_count = count
-            least_common = c
-
-    return most_common_count - least_common_count
+    return max_count - min_count
 
 if __name__ == "__main__":
     assert solve(TEST_INPUT) == 2188189693529

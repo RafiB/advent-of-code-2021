@@ -1,3 +1,6 @@
+from functools import reduce
+import operator
+
 HEX_TO_BIN = {
     "0": "0000",
     "1": "0001",
@@ -34,7 +37,7 @@ def parse(remaining, single=False, i=0):
     # print(i*" ", "read", remaining, single)
     phase = Phase.PACKET
 
-    answer = 0
+    answer = []
 
     if not remaining:
         return answer, remaining
@@ -47,7 +50,6 @@ def parse(remaining, single=False, i=0):
             packet_version_int = 0
             for b in packet_version:
                 packet_version_int = (packet_version_int << 1) + int(b)
-            answer += packet_version_int
 
             packet_type_id, remaining = remaining[:3], remaining[3:]
             packet_type_id_int = 0
@@ -68,7 +70,8 @@ def parse(remaining, single=False, i=0):
                 # print(i*" ", "is literal", literal)
                 if single:
                     # print(i*" ", "answer", answer)
-                    return answer, remaining
+                    return literal, remaining
+                answer.append(literal)
                 phase = Phase.PACKET
             else:
                 phase = Phase.OPERATOR
@@ -84,12 +87,52 @@ def parse(remaining, single=False, i=0):
                 # print(i*" ", "15 bits", length_in_bin, length)
 
                 sub_answer, _ = parse(remaining[:length], i=i+2)
-                answer += sub_answer
                 remaining = remaining[length:]
                 # print(i*" ", "finished", length, remaining)
 
+                if packet_type_id_int == 0:
+                    if not isinstance(sub_answer, list):
+                        answer.append(sub_answer)
+                    else:
+                        answer.append(sum(sub_answer))
+                elif packet_type_id_int == 1:
+                    if not isinstance(sub_answer, list):
+                        answer.append(sub_answer)
+                    else:
+                        answer.append(reduce(operator.mul, sub_answer, 1))
+                elif packet_type_id_int == 2:
+                    if not isinstance(sub_answer, list):
+                        answer.append(sub_answer)
+                    else:
+                        answer.append(min(sub_answer))
+                elif packet_type_id_int == 3:
+                    if not isinstance(sub_answer, list):
+                        answer.append(sub_answer)
+                    else:
+                        answer.append(max(sub_answer))
+                elif packet_type_id_int == 5:
+                    if isinstance(sub_answer, list):
+                        assert len(sub_answer) == 2
+                    else:
+                        sub_answer = [answer, sub_answer]
+                    answer.append(1 if sub_answer[0] > sub_answer[1] else 0)
+                elif packet_type_id_int == 6:
+                    if isinstance(sub_answer, list):
+                        assert len(sub_answer) == 2
+                    else:
+                        sub_answer = [answer, sub_answer]
+                    answer.append(1 if sub_answer[0] < sub_answer[1] else 0)
+                elif packet_type_id_int == 7:
+                    if isinstance(sub_answer, list):
+                        assert len(sub_answer) == 2
+                    else:
+                        sub_answer = [answer, sub_answer]
+                    answer.append(1 if sub_answer[0] == sub_answer[1] else 0)
+
                 if single:
                     # print(i*" ", "answer", answer)
+                    while isinstance(answer, list) and len(answer) == 1:
+                        answer = answer[0]
                     return answer, remaining
                 phase = Phase.PACKET
             else:
@@ -100,12 +143,54 @@ def parse(remaining, single=False, i=0):
                     num_packets = (num_packets << 1) + int(b)
                 # print(i*" ", "11 bits", num_packets_in_bin, "read", num_packets, "packet")
 
+                sub_answer = []
                 for _ in range(num_packets):
-                    sub_answer, remaining = parse(remaining, single=True, i=i+2)
-                    answer += sub_answer
+                    sa, remaining = parse(remaining, single=True, i=i+2)
+                    sub_answer.append(sa)
+
+                if packet_type_id_int == 0:
+                    if not isinstance(sub_answer, list):
+                        answer.append(sub_answer)
+                    else:
+                        answer.append(sum(sub_answer))
+                elif packet_type_id_int == 1:
+                    if not isinstance(sub_answer, list):
+                        answer.append(sub_answer)
+                    else:
+                        answer.append(reduce(operator.mul, sub_answer, 1))
+                elif packet_type_id_int == 2:
+                    if not isinstance(sub_answer, list):
+                        answer.append(sub_answer)
+                    else:
+                        answer.append(min(sub_answer))
+                elif packet_type_id_int == 3:
+                    if not isinstance(sub_answer, list):
+                        answer.append(sub_answer)
+                    else:
+                        answer.append(max(sub_answer))
+                elif packet_type_id_int == 5:
+                    if isinstance(sub_answer, list):
+                        assert len(sub_answer) == 2
+                    else:
+                        sub_answer = [answer, sub_answer]
+                    answer.append(1 if sub_answer[0] > sub_answer[1] else 0)
+                elif packet_type_id_int == 6:
+                    if isinstance(sub_answer, list):
+                        assert len(sub_answer) == 2
+                    else:
+                        sub_answer = [answer, sub_answer]
+                    answer.append(1 if sub_answer[0] < sub_answer[1] else 0)
+                elif packet_type_id_int == 7:
+                    if isinstance(sub_answer, list):
+                        assert len(sub_answer) == 2
+                    else:
+                        sub_answer = [answer, sub_answer]
+                    answer.append(1 if sub_answer[0] == sub_answer[1] else 0)
 
                 if single:
                     # print(i*" ", "answer", answer)
+                    while isinstance(answer, list) and len(answer) == 1:
+                        answer = answer[0]
                     return answer, remaining
                 phase = Phase.PACKET
 
@@ -113,19 +198,29 @@ def parse(remaining, single=False, i=0):
             raise NotImplementedError()
 
     # print(i*" ", "answer", answer)
+    while isinstance(answer, list) and len(answer) == 1:
+        answer = answer[0]
     return answer, remaining
 
 
 def solve(hex_str):
-    return parse(hex_to_bin(hex_str))[0]
+    answer = parse(hex_to_bin(hex_str))[0]
+    while isinstance(answer, list):
+        assert len(answer) == 1
+        answer = answer[0]
+    return answer
 
 
 def tests():
     assert hex_to_bin("D2FE28") == "110100101111111000101000"
-    assert solve("8A004A801A8002F478") == 16
-    assert solve("620080001611562C8802118E34") == 12
-    assert solve("C0015000016115A2E0802F182340") == 23
-    assert solve("A0016C880162017C3686B18A3D4780") == 31
+    assert solve("C200B40A82") == 3
+    assert solve("04005AC33890") == 54
+    assert solve("880086C3E88112") == 7
+    assert solve("CE00C43D881120") == 9
+    assert solve("D8005AC2A8F0") == 1
+    assert solve("F600BC2D8F") == 0
+    assert solve("9C005AC2F8F0") == 0
+    assert solve("9C0141080250320F1802104A08") == 1
 
 
 if __name__ == "__main__":
